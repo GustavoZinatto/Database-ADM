@@ -113,3 +113,11 @@ select	f.IdFunc Cod_Cliente, F.nome Funcionario, F.cargo Cargo,
 		D.IdDepartamento Cod_Departamento, D.nome Departamento
 from	Departamentos D FULL OUTER JOIN Funcionarios F ON d.IdDepartamento = F.departamentoId
 go
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+--	CONSULTAR TODOS OS DEPARTAMENTOS E RELACIONAR COM TODOS OS FUNCIONÁRIOS
+
+select	f.IdFunc Cod_Cliente, F.nome Funcionario, F.cargo Cargo,
+		D.IdDepartamento Cod_Departamento, D.nome Departamento
+from	Departamentos D CROSS JOIN Funcionarios F
+go
