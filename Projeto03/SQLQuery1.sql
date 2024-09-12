@@ -132,3 +132,58 @@ as
 go
 
 select * from v_Pedido
+
+---------------------------------------------------------------------------------------------
+-- CRIAR UMA VIEW PARA OS ITENS DE PEDIDOS, TRAZENDO DADOS DOS PRODUTOS DE CADA PEDIDO.
+-- OBJETIVO: JUNTAR TABELA COM VIEW
+
+create view v_ItensPedidos
+as
+	select	IP.pedidoId No_Pedido, IP.qtd Quantidade,  IP.valor Valor,
+			vP.Produto,
+			(IP.qtd * IP.valor) Total_Item
+	from	Itens_Pedidos IP INNER JOIN v_Produtos vP ON IP.produtoId = vP.Codigo_Prod
+go
+
+
+select * from v_ItensPedidos
+ORDER BY valor DESC
+go
+
+---------------------------------------------------------------------------------------------
+-- CALCULAR O TOTAL DE UM PEDIDO
+-- CALCULAR O TOTAL DE PEDIDO 01
+
+select sum(Total_Item) Total_Pedido
+from v_ItensPedidos
+where No_Pedido = 3
+go
+
+
+---------------------------------------------------------------------------------------------
+-- CONSULTAR TPDPS OS DADOS DOS PEDIDOS, TRAZENDO OS PRODUTOS DE CADA PEDIDO, OS CLIENTES QUE FIZERAM O PEDIDO E OS VENDEDORES QUE RESTRARAM OS PEDIDOS
+-- OBJETIVO: JUNTAR TODAS AS VIEWS
+
+create view v_ProdPedido
+as 
+	select	vp.No_Pedido, vp.Data_Pedido, vp.Cod_Cliente, vp.Cliente, vp.Cod_Vendedor, vp.Vendedor, vp.Situacao_Pedido, 
+			vip.Produto, vip.Quantidade, vip.Valor, vip.Total_Item
+	from	v_Pedido vp, v_ItensPedidos vip
+	where	vp.No_Pedido = vip.No_Pedido
+go
+
+select * from v_ProdPedido
+go
+
+select * from v_ProdPedido
+where No_Pedido = 2
+go
+
+---------------------------------------------------------------------------------------------
+-- CADASTRAR UM PRODUTO NOVO
+
+insert into Produtos(descricao, qtd, valor, status)
+values	('Paçoca', 50, 2.50, 1)
+go
+
+select * from Produtos
