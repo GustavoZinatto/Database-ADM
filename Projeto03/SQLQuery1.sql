@@ -1,189 +1,202 @@
----------------------------------------------------------------------------------------------
--- VIEW
 
----------------------------------------------------------------------------------------------
--- ACESSAR BANCO DE DADOS
+
+--ACESSAR O BANCO DE DADOS ------------------------------------------
 
 use VendasInfoM
 go
 
----------------------------------------------------------------------------------------------
--- CRIAR UMA VIEW PARA CONSULTAR TODOS OS DADOS DOS PRODUTOS CADASTRADOS
+--CRIAR UMA PROCEDURE PARA CADASTRAR VENDEDORES ------------------------------------------
+--TODO VENDEDOR É UMA PESSOA
 
-create view v_Produtos
+create procedure sp_CadVendedor(@nomeVend varchar(50), @cpfVendedor varchar(14), @salarioVendedor money)
 as
-	select * from Produtos
+begin
+	--INSERINDO OS DADOS DA PESSOA
+	insert into Pessoas (nome, cpf, status)
+	values(@nomeVend, @cpfVendedor, 1)
+
+	--INSERIR OS DADOS DO VENDEDOR
+	insert into Vendedores(pessoaId, salario)
+	values(@@IDENTITY, @salarioVendedor) --@@IDENTITY recupera o último id gerado, idependentemente da tabela
+end
 go
 
----------------------------------------------------------------------------------------------
--- EXECUTAR A VIEW
+-- USAR A PROCEDURE PARA CADASTRAR UM VENDEDOR
+
+exec sp_CadVendedor 'Ademar Reis', '123.455.853-78', 5200.00
+go
+
+exec sp_CadVendedor 'Carlos Magnus', '258.654.753-87', 5100.00
+go
+
+-- CONSULTAR OS VENDEDORES PELA VIEW
+select * from v_Vendedores
+go
+
+-- CONSULTAR PESSOAS
+select * from Pessoas
+go
+
+-- CONSULTAR VENDEDORES
+select * from Vendedores
+go
+
+-- CRIAR TABELA ENDEREÇO DOS CLIENTES
+
+create table Enderecos (
+	idEnd int not null identity,
+	rua varchar(100) not null,
+	numero varchar(10) not null,
+	bairro varchar(50) not null,
+	cep varchar(8) not null,
+	cidade varchar(30) not null,
+	idCliente int not null,
+
+	primary key (idCliente, idEnd),
+
+	foreign key(idCliente) references Clientes(pessoaId)
+)
+go
+
+-- CRIAR UMA PROCEDURE PARA CADASTRAR CLIENTE
+-- TODO CLIENTE É UMA PESSOA E TEM ENDEREÇO
+
+create procedure sp_CadCliente
+(
+	--lista de parâmetros recebidos
+	@nomeCli varchar(50),
+	@cpfCli varchar(14),
+	@rendaCli money,
+	@ruaCli varchar(100),
+	@numeroCli varchar(10),
+	@bairroCli varchar(50),
+	@cepCli varchar(8),
+	@cidadeCli varchar(30)
+)
+as
+begin
+	--cadastrar os dados da Pessoa
+	insert into Pessoas (nome, cpf, status)
+	values(@nomeCli, @cpfCli, 1)
+
+	--Declarar uma variável para armazenar o id gerado para a tabela Pessoas
+	declare @idCli int
+	--atribuir para essa variavel o id gerado para a tabela Pessoas
+	set @idCli = @@IDENTITY
+
+	--cadastrar os dados do cliente
+	insert into Clientes(pessoaId, renda, credito)
+	values (@idCli, @rendaCli, (@rendaCli * 0.3))
+
+	-- cadastrar os dados do endereço
+	insert into Enderecos(rua, numero, bairro, cep, cidade, idCliente)
+	values (@ruaCli, @numeroCli, @bairroCli, @cepCli, @cidadeCli, @idCli)
+end
+go
+
+--cadastrar um novo cliente
+exec sp_CadCliente 'Alexandre Ducatti', '456.987.123-99', 7000.00, 'Rua A', '10', 'Eldorado', '150148-555', 'Barretos'
+go
+
+--consultar clientes
+select vc.*, E.*
+from v_Cliente vc	LEFT JOIN	Enderecos E ON vc.Cod_Cliente = E.idCliente
+go
+
+
+-- CRIAR UMA PROCEDURE PARA CADASTRAR PRODUTOS ----------------------------------
+
+create procedure sp_cadProduto (
+	
+	--lista de Parâmetros
+	@descricao varchar(100), @qtd int, @valor decimal(10,2)
+) 
+as
+begin
+	--inserir os dados na tabela Produtos
+	insert into Produtos (descricao, qtd, valor, status)
+	values (@descricao, @qtd, @valor, 1)
+end
+go
+
+execute sp_cadProduto 'Pacote de Amendoim', '100', 13.99
+go
+
 select * from v_Produtos
 go
 
----------------------------------------------------------------------------------------------
--- ALTERAÇÃO DA VIEW PARA CONFIGURAR MAIS COMPREENSÍVEL
+-- CRIAR PROCEDURE PARA CADASTRAR PEDIDOS
+-- LEMBRE-SE QUE UM PEDIDO É FEITO POR UM CLIENTE E REGISTRADO POR UM VENDEDOR
 
-alter view v_Produtos
-as	
-	select idProduto Codigo_Prod, descricao Produto, qtd Qts_Estoque, valor Preco_Prod,
-		case status
-			when 1 then 'Ativo'
-			when 2 then 'Inativo'
-			else 'Cancelado'
-		end Situacao_Prod
-	from Produtos
-go
-
----------------------------------------------------------------------------------------------
--- ATUALIZAÇÃO DA TABELA PRODUTOS
-
-update Produtos set status = null 
-where idProduto in (5, 7, 11)
-go
-
----------------------------------------------------------------------------------------------
--- CONSULTAR TODOS OS PRODUTOS COM O PREÇO MAIOR QUE R$ 7,00
--- ORDENADA PELO PRODUTO EM ORDEM ASCENDENTE
-
-select * from v_Produtos
-where Preco_Prod > 7.00
-order by Preco_Prod ASC
-go
-
-exec sp_help pessoas
-go
-
----------------------------------------------------------------------------------------------
--- CRIAR UMA VIEW PARA CONSULTAR TODOS OS DADOS DO CLIENTE
-
-create view v_Cliente
+create procedure sp_cadPedido (
+	--lista de Parêmetros
+	@idVend int, @idCli int
+)
 as
-	select	p.idPessoa Cod_Cliente, p.nome Cliente, p.cpf CPF_CLiente,
-			c.renda Renda, c.credito Crédito,
-			case p.status
-				when 1 then 'Ativo'
-				when 2 then 'Inativo'
-				when 3 then 'Bloqueado'
-				else 'Cancelado'
-			end Situacao_Cliente
-	from Pessoas p INNER JOIN Clientes c ON p.idPessoa = c.pessoaId
+begin
+	--cadastrar pedidos
+	insert into Pedidos(data, status, vendedorId, clienteId)
+	values (getdate(), 1, @idVend, @idCli)
+end
 go
-
----------------------------------------------------------------------------------------------
--- EXECUTAR A VIEW
 
 select * from v_Cliente
-
----------------------------------------------------------------------------------------------
--- ATUALIZAÇÃO DA TABELA PESSOAS
-
-update Pessoas set status = 3
-where idPessoa = 5
 go
 
-update Pessoas set status = null
-where idPessoa = 9
-go
-
----------------------------------------------------------------------------------------------
--- CADASTRAR UM NOVO PRODUTO NA TABELA PRODUTOS USANDO A VIEW
-
-insert into v_Produtos (Produto, Qts_Estoque, Preco_Prod)
-values	('Bolo de Rolo de Doce de Leite', 10, 25.00)
-go
-
-select * from Produtos
-select * from v_Produtos
-
----------------------------------------------------------------------------------------------
--- CRIAR UMA VIEW PARA CONSULTAR TODOS OS DADOS DOS VENDEDORES
-
-create view v_Vendedores
-as
-	select	p.nome Vendedor, p.cpf CPF_Vendedor,
-			v.pessoaId Cod_Vendedor, v.salario Salario,
-			case p.status
-				when 1 then 'Ativo'
-				when 2 then 'Inativo'
-				when 3 then 'Bloqueado'
-				else 'Cancelado'
-			end Situacao_Vendedor
-	from	Pessoas p INNER JOIN Vendedores v ON p.idPessoa = v.pessoaId
-go
- 
 select * from v_Vendedores
+go
 
----------------------------------------------------------------------------------------------
--- CRIAR UMA VIEW PARA CONSULTAR TODOS OS DADOS DOS PEDIDOS E TRAZER OS NOMES DOS CLIENTES E VENDEDORES QUE FIZERAM PEDIDOS
--- OBJETIVO: JUNTAR TABELAS COM VIEWS
+--executar procedure
+exec sp_cadPedido 1, 1
+go
+exec sp_cadPedido 3, 2
+go
 
-create view v_Pedido
+select * from Pedidos
+go
+
+-- CRIAR UMA PROCEDURE PARA DAR BAIXA EM ESTOQUE
+
+create procedure sp_baixaEstoque (
+	--lista de parâmetros
+	@idProduto int, @qtdVendida int
+)
 as
-	select	Pe.idPedidos No_Pedido, Pe.data Data_Pedido, Pe.valor Total_Pedido,
-			vC.Cod_Cliente, vC.Cliente, vV.Cod_Vendedor, vV.Vendedor,
-			case Pe.status
-				when 1 then 'Em andamento'
-				when 2 then 'Finalizado'
-				when 3 then 'Entregue'
-				else 'Cancelado'
-			end Situacao_Pedido
-	from	Pedidos Pe, v_Cliente vC, v_Vendedores vV
-	where	Pe.clienteId = vC.Cod_Cliente and Pe.vendedorId = vV.Cod_Vendedor
+begin
+	--atualizar a tabela Produtos
+	update Produtos set qtd = qtd - @qtdVendida
+	where	idProduto = @idProduto and
+			qtd >= @qtdVendida and
+			@qtdVendida > 0
+end
 go
 
-select * from v_Pedido
+select * from v_Produtos
+go
 
----------------------------------------------------------------------------------------------
--- CRIAR UMA VIEW PARA OS ITENS DE PEDIDOS, TRAZENDO DADOS DOS PRODUTOS DE CADA PEDIDO.
--- OBJETIVO: JUNTAR TABELA COM VIEW
+-- DAR BAIXA EM ESTOQUE DO PRODUTO 5
+exec sp_baixaEstoque 5, 10
+go
 
-create view v_ItensPedidos
+exec sp_baixaEstoque 5, 100
+go
+
+-- CRIAR UMA PROCEDURE PARA ATUALIZAR O ESTOQUE QUANDO FOR FEITA A COMPRA DE UM PRODUTO
+
+create procedure sp_atualizaEstoque (
+	@idProd int, @qtdComprada int
+)
 as
-	select	IP.pedidoId No_Pedido, IP.qtd Quantidade,  IP.valor Valor,
-			vP.Produto,
-			(IP.qtd * IP.valor) Total_Item
-	from	Itens_Pedidos IP INNER JOIN v_Produtos vP ON IP.produtoId = vP.Codigo_Prod
+begin
+	--atualização de qtd na tabela Produtos
+	update	Produtos set qtd = qtd + @qtdComprada
+	where	idProduto = @idProd and
+			@qtdComprada > 0
+end
 go
 
-
-select * from v_ItensPedidos
-ORDER BY valor DESC
+select * from v_Produtos
 go
 
----------------------------------------------------------------------------------------------
--- CALCULAR O TOTAL DE UM PEDIDO
--- CALCULAR O TOTAL DE PEDIDO 01
-
-select sum(Total_Item) Total_Pedido
-from v_ItensPedidos
-where No_Pedido = 3
+exec sp_atualizaEstoque 10, 15
 go
-
-
----------------------------------------------------------------------------------------------
--- CONSULTAR TPDPS OS DADOS DOS PEDIDOS, TRAZENDO OS PRODUTOS DE CADA PEDIDO, OS CLIENTES QUE FIZERAM O PEDIDO E OS VENDEDORES QUE RESTRARAM OS PEDIDOS
--- OBJETIVO: JUNTAR TODAS AS VIEWS
-
-create view v_ProdPedido
-as 
-	select	vp.No_Pedido, vp.Data_Pedido, vp.Cod_Cliente, vp.Cliente, vp.Cod_Vendedor, vp.Vendedor, vp.Situacao_Pedido, 
-			vip.Produto, vip.Quantidade, vip.Valor, vip.Total_Item
-	from	v_Pedido vp, v_ItensPedidos vip
-	where	vp.No_Pedido = vip.No_Pedido
-go
-
-select * from v_ProdPedido
-go
-
-select * from v_ProdPedido
-where No_Pedido = 2
-go
-
----------------------------------------------------------------------------------------------
--- CADASTRAR UM PRODUTO NOVO
-
-insert into Produtos(descricao, qtd, valor, status)
-values	('Paçoca', 50, 2.50, 1)
-go
-
-select * from Produtos
